@@ -77,4 +77,4 @@ class and then implemented on an FPGA board.
 
 ## Usage
 
-In order to use this program, you need to write new lines of code in the “program.asm” file, however, you need to follow the syntax carefully. In case of an invalid instruction, the console will display a message describing the error, and the instruction will be skipped when writing to the output file, resulting in no information about the invalid instruction in the output file. The output file is "program.ms".
+In order to use this program, you need to write new lines of code in the “program.asm” file and then run the "assembler_parser.exe" program, however, you need to follow the syntax carefully. In case of an invalid instruction, the console will display a message describing the error, and the instruction will be skipped when writing to the output file, resulting in no information about the invalid instruction in the output file. The output file is "program.ms".
