@@ -75,8 +75,8 @@ impl Command {
             Command::Nop => "0x00300000".to_string(),
             Command::Jump => "0x011<RX>8000".to_string(),
             Command::Jumpi => "0x013283<IMM>".to_string(),
-            Command::Jz => "0x023<RX>83<IMM>".to_string(),
-            Command::Jnz => "0x033<RX>83<IMM>".to_string(),
+            Command::Jz => "0x023<RX>86<IMM>".to_string(),
+            Command::Jnz => "0x033<RX>86<IMM>".to_string(),
             Command::Add => "0x001<RX><RY><RD>00".to_string(),
             Command::Addi => "0x001<RX>8<RD><IMM>".to_string(),
             Command::And => "0x000<RX><RY><RD>00".to_string(),
@@ -237,7 +237,7 @@ fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Re
             let rx = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
             if rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(1).unwrap().parse::<u8>() {
+            let imm = match input_data.get(2).unwrap().parse::<u8>() {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
