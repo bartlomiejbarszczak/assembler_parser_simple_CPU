@@ -72,17 +72,17 @@ impl Command {
         match self {
             Command::Mov => "0x001<RX>6<RD>00".to_string(),
             Command::Movi => "0x00168<RD><IMM>".to_string(),
-            Command::Nop => "0x00300000".to_string(),
-            Command::Jump => "0x011<RX>8000".to_string(),
-            Command::Jumpi => "0x013283<IMM>".to_string(),
-            Command::Jz => "0x023<RX>86<IMM>".to_string(),
-            Command::Jnz => "0x033<RX>86<IMM>".to_string(),
+            Command::Nop => "0x00166600".to_string(),
+            Command::Jump => "0x011<RX>6600".to_string(),
+            Command::Jumpi => "0x0116e6<IMM>".to_string(),
+            Command::Jz => "0x023<RX>e6<IMM>".to_string(),
+            Command::Jnz => "0x033<RX>e6<IMM>".to_string(),
             Command::Add => "0x001<RX><RY><RD>00".to_string(),
-            Command::Addi => "0x001<RX>8<RD><IMM>".to_string(),
+            Command::Addi => "0x001<RX>e<RD><IMM>".to_string(),
             Command::And => "0x000<RX><RY><RD>00".to_string(),
-            Command::Andi => "0x000<RX>8<RD><IMM>".to_string(),
-            Command::Load => "0x001<RX>8<RD*>00".to_string(),
-            Command::Loadi => "0x00308<RD*><IMM>".to_string(),
+            Command::Andi => "0x000<RX>e<RD><IMM>".to_string(),
+            Command::Load => "0x001<RX>6<RD*>00".to_string(),
+            Command::Loadi => "0x0016e<RD*><IMM>".to_string(),
             Command::Undefined => "unsupported".to_string()
         }
     }
@@ -183,17 +183,30 @@ fn save_to_file(file_name: &str, data: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-fn repair_register(reg: &str) -> String {
-    let temp = (reg.parse::<u8>().unwrap() << 1) + 1;
-    format!("{:x}", temp)
+fn add_one_in_first(reg: &str) -> String {
+    let result = (reg.parse::<u8>().unwrap() << 1) + 1;
+    format!("{:x}", result)
+}
+
+fn get_parsed_register(data: &Vec<&str>, index: usize) -> String {
+    data.get(index).unwrap().to_uppercase().parse::<Register>().unwrap().parse()
+}
+
+fn get_imm(data: &Vec<&str>, index: usize) -> Result<String, String> {
+    let imm = match data.get(index).unwrap().parse::<u8>() {
+        Ok(imm) => imm,
+        Err(error) => return Err(error.to_string())
+    };
+
+    Ok(format!("{:02x}", imm))
 }
 
 
 fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Result<(), String> {
     let new_data = match instruction.command {
         Command::Mov => {
-            let rd = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
             if rx == "unsupported" || rd == "unsupported" { return Err(String::from("Unsupported register")); }
 
             let temp_data = instruction.data.replace("<RD>", &rd);
@@ -201,16 +214,16 @@ fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Re
         }
 
         Command::Movi => {
-            let rd = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
             if rd == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(2).unwrap().parse::<u8>() {
+            let imm = match get_imm(&input_data, 2) {
                 Ok(imm) => imm,
-                Err(error) => return Err(error.to_string())
+                Err(error_message) => return Err(error_message)
             };
 
             let temp_data = instruction.data.replace("<RD>", &rd);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
         },
 
         Command::Nop => {
@@ -218,51 +231,51 @@ fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Re
         },
 
         Command::Jump => {
-            let rx = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
+            let rx = get_parsed_register(input_data, 1);
             if rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
             instruction.data.replace("<RX>", &rx)
         },
 
         Command::Jumpi => {
-            let imm = match input_data.get(1).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 1) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
-            instruction.data.replace("<IMM>", &format!("{:02}", imm))
+            instruction.data.replace("<IMM>", &imm)
         },
 
         Command::Jz => {
-            let rx = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
+            let rx = get_parsed_register(input_data, 1);
             if rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(2).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 2) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
             let temp_data = instruction.data.replace("<RX>", &rx);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
         },
 
         Command::Jnz => {
-            let rx = input_data.get(1).unwrap().to_uppercase().parse::<Register>().unwrap().parse();
+            let rx = get_parsed_register(input_data, 1);
             if rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(1).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 2) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
             let temp_data = instruction.data.replace("<RX>", &rx);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
         },
 
         Command::Add => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().parse::<Register>().unwrap().parse();
-            let ry = input_data.get(3).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
+            let ry = get_parsed_register(input_data, 3);
             if rd == "unsupported" || rx == "unsupported" || ry == "unsupported" { return Err(String::from("Unsupported register")); }
 
             let mut temp_data = instruction.data.replace("<RD>", &rd);
@@ -271,25 +284,25 @@ fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Re
         },
 
         Command::Addi => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
             if rd == "unsupported" || rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(3).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 3) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
             let mut temp_data = instruction.data.replace("<RD>", &rd);
             temp_data = temp_data.replace("<RX>", &rx);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
 
         },
 
         Command::And => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().parse::<Register>().unwrap().parse();
-            let ry = input_data.get(3).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
+            let ry = get_parsed_register(input_data, 3);
             if rd == "unsupported" || rx == "unsupported" || ry == "unsupported" { return Err(String::from("Unsupported register")); }
 
             let mut temp_data = instruction.data.replace("<RD>", &rd);
@@ -298,43 +311,43 @@ fn fill_instruction(instruction: &mut Instruction, input_data: &Vec<&str>) -> Re
         },
 
         Command::Andi => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
             if rd == "unsupported" || rx == "unsupported" { return Err(String::from("Unsupported register")); }
 
-            let imm = match input_data.get(3).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 3) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
             let mut temp_data = instruction.data.replace("<RD>", &rd);
             temp_data = temp_data.replace("<RX>", &rx);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
 
         },
 
         Command::Load => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
-            let rx = input_data.get(2).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
+            let rx = get_parsed_register(input_data, 2);
             if rd == "unsupported" || rx == "unsupported" { return Err(String::from("Unsupported register")); }
-            let rd = repair_register(&rd);
+            let rd = add_one_in_first(&rd);
 
             let temp_data = instruction.data.replace("<RD*>", &rd);
             temp_data.replace("<RX>", &rx)
         },
 
         Command::Loadi => {
-            let rd = input_data.get(1).unwrap().parse::<Register>().unwrap().parse();
+            let rd = get_parsed_register(input_data, 1);
             if rd == "unsupported" { return Err(String::from("Unsupported register")); }
-            let rd = repair_register(&rd);
+            let rd = add_one_in_first(&rd);
 
-            let imm = match input_data.get(2).unwrap().parse::<u8>() {
+            let imm = match get_imm(input_data, 2) {
                 Ok(imm) => imm,
                 Err(error) => return Err(error.to_string())
             };
 
             let temp_data = instruction.data.replace("<RD*>", &rd);
-            temp_data.replace("<IMM>", &format!("{:02}", imm))
+            temp_data.replace("<IMM>", &imm)
         },
 
         Command::Undefined => return Err("Undefined command".to_string())
@@ -355,6 +368,7 @@ pub fn compile_asm2ms() -> Result<(), String> {
     let mut buffer: Vec<u8> = Vec::new();
 
     for line in instr_lines.lines() {
+        let line_org = line;
         let line = line.split(' ').collect::<Vec<&str>>();
         let line = line.iter().map(|x| { x.trim_matches(',') }).collect::<Vec<&str>>();
 
@@ -366,6 +380,10 @@ pub fn compile_asm2ms() -> Result<(), String> {
                     println!("{instruction:?}");
                     let mut instruction_u8  = Vec::from(instruction.data.as_bytes());
                     buffer.append(&mut instruction_u8);
+                    buffer.push(32);
+                    buffer.push(59);
+                    buffer.push(32);
+                    buffer.append(&mut Vec::from(line_org.as_bytes()));
                     buffer.push(13); // \r
                     buffer.push(10); // \n
                 },
